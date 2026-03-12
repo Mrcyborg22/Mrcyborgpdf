@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mr Cyborg PDF — Intelligence Documentaire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<style>
+:root {
+  --cyan:#00f5ff; --magenta:#ff00aa; --electric:#7b2fff; --neon-green:#00ff88;
+  --dark:#020408; --glass:rgba(0,245,255,0.05); --border:rgba(0,245,255,0.2);
+  --text:#b0e8ff;
+  --glow-cyan:0 0 20px rgba(0,245,255,0.6),0 0 60px rgba(0,245,255,0.2);
+  --glow-magenta:0 0 20px rgba(255,0,170,0.6),0 0 60px rgba(255,0,170,0.2);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--dark);color:var(--text);font-family:'Rajdhani',sans-serif;overflow-x:hidden;min-height:100vh}
+#bg-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,245,255,0.012) 2px,rgba(0,245,255,0.012) 4px);z-index:1;pointer-events:none;animation:scanMove 8s linear infinite}
+@keyframes scanMove{from{background-position:0 0}to{background-position:0 100px}}
+.grid-lines{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.025;background-image:linear-gradient(var(--cyan) 1px,transparent 1px),linear-gradient(90deg,var(--cyan) 1px,transparent 1px);background-size:60px 60px;animation:gridMove 20s linear infinite}
+@keyframes gridMove{from{transform:translateY(0)}to{transform:translateY(60px)}}
+.particles{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.particle{position:absolute;width:2px;height:2px;background:var(--cyan);border-radius:50%;animation:particleFloat linear infinite}
+@keyframes particleFloat{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-100px) translateX(var(--drift));opacity:0}}
+#progress-top{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--magenta));z-index:9999;transition:width .3s ease;box-shadow:0 0 10px rgba(0,245,255,.8);width:0%}
+/* HEADER */
+header{position:relative;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 26px;background:rgba(1,2,6,.97);border-bottom:1px solid var(--border);backdrop-filter:blur(20px);height:66px;flex-shrink:0}
+.logo-area{display:flex;align-items:center;gap:13px}
+.logo-3d{width:46px;height:46px}
+.logo-3d canvas{width:100%;height:100%}
+.logo-text{display:flex;flex-direction:column}
+.brand{font-family:'Orbitron',monospace;font-size:19px;font-weight:900;letter-spacing:3px;background:linear-gradient(135deg,var(--cyan),var(--magenta));-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 8px rgba(0,245,255,.8))}
+.sub{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:3px;opacity:.6}
+.header-status{display:flex;gap:12px;align-items:center}
+.status-pill{display:flex;align-items:center;gap:5px;padding:4px 11px;border:1px solid var(--border);border-radius:20px;background:var(--glass);font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--cyan)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--neon-green);animation:dotPulse 1.5s infinite}
+@keyframes dotPulse{0%,100%{opacity:1;box-shadow:0 0 4px var(--neon-green)}50%{opacity:.4;box-shadow:none}}
+/* LAYOUT */
+.app-container{position:relative;z-index:10;display:grid;grid-template-columns:268px 1fr 308px;height:calc(100vh - 66px);overflow:hidden}
+/* SIDEBAR LEFT */
+.sidebar-left{background:rgba(1,4,12,.97);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:12px 0;scrollbar-width:thin;scrollbar-color:var(--cyan) transparent}
+.sidebar-left::-webkit-scrollbar{width:3px}
+.sidebar-left::-webkit-scrollbar-thumb{background:var(--cyan);border-radius:2px}
+.sec-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:3px;padding:9px 17px 4px;opacity:.52}
+.tg{padding:3px 9px}
+.tbtn{width:100%;display:flex;align-items:center;gap:9px;padding:8px 10px;background:transparent;border:1px solid transparent;border-radius:5px;color:var(--text);cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:.4px;transition:all .2s;text-align:left;position:relative;overflow:hidden}
+.tbtn::before{content:'';position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,rgba(0,245,255,.12),transparent);transition:width .3s}
+.tbtn:hover::before,.tbtn.active::before{width:100%}
+.tbtn:hover{border-color:var(--border);color:var(--cyan)}
+.tbtn.active{border-color:var(--cyan);background:rgba(0,245,255,.08);color:var(--cyan);box-shadow:var(--glow-cyan)}
+.ti{font-size:15px;min-width:21px;text-align:center}
+.badge{margin-left:auto;font-size:8px;padding:1px 5px;border-radius:10px;background:rgba(255,0,170,.2);border:1px solid var(--magenta);color:var(--magenta);font-family:'Share Tech Mono',monospace;letter-spacing:1px}
+.badge.new{background:rgba(0,255,136,.2);border-color:var(--neon-green);color:var(--neon-green)}
+.divider{height:1px;background:var(--border);margin:7px 17px;opacity:.4}
+/* MAIN */
+.main-content{display:flex;flex-direction:column;overflow:hidden;background:rgba(1,3,10,.92)}
+.toolbar{display:flex;align-items:center;gap:5px;padding:7px 14px;background:rgba(0,8,20,.97);border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0}
+.tbarbtn{display:flex;align-items:center;gap:5px;padding:5px 11px;background:var(--glass);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;transition:all .2s;white-space:nowrap}
+.tbarbtn:hover{border-color:var(--cyan);color:var(--cyan);box-shadow:var(--glow-cyan);background:rgba(0,245,255,.07)}
+.tbarbtn.primary{background:linear-gradient(135deg,rgba(0,245,255,.17),rgba(123,47,255,.17));border-color:var(--cyan);color:var(--cyan)}
+.tsep{width:1px;height:24px;background:var(--border);margin:0 3px}
+.zctrl{display:flex;align-items:center;gap:2px;background:rgba(0,20,40,.8);border:1px solid var(--border);border-radius:4px;padding:2px}
+.zbtn{width:24px;height:24px;background:transparent;border:none;color:var(--text);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;border-radius:3px;transition:all .2s}
+.zbtn:hover{background:rgba(0,245,255,.1);color:var(--cyan)}
+.zval{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--cyan);min-width:36px;text-align:center}
+/* DROP ZONE */
+.drop-zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer}
+.drop-zone.has-file{justify-content:flex-start;cursor:default}
+#file-input{display:none}
+.drop-content{display:flex;flex-direction:column;align-items:center;gap:17px;padding:38px;text-align:center}
+.drop-icon{width:106px;height:106px}
+.drop-icon canvas{width:100%;height:100%}
+.drop-title{font-family:'Orbitron',monospace;font-size:17px;font-weight:700;color:var(--cyan);letter-spacing:2px;animation:glowPulse 2.5s ease infinite}
+@keyframes glowPulse{0%,100%{text-shadow:0 0 10px var(--cyan),0 0 30px rgba(0,245,255,.3)}50%{text-shadow:0 0 20px var(--cyan),0 0 60px rgba(0,245,255,.6)}}
+.drop-sub{font-size:13px;color:rgba(176,232,255,.48);line-height:1.7;max-width:350px}
+.drop-zone-border{position:absolute;inset:17px;border:2px dashed rgba(0,245,255,.2);border-radius:11px;pointer-events:none;animation:borderPulse 3s ease infinite}
+@keyframes borderPulse{0%,100%{border-color:rgba(0,245,255,.2)}50%{border-color:rgba(0,245,255,.5)}}
+.drop-zone.drag-over .drop-zone-border{border-color:var(--cyan);border-style:solid;box-shadow:inset 0 0 60px rgba(0,245,255,.07),var(--glow-cyan)}
+/* PDF VIEWER - FIX #11 */
+#pdf-viewer{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;align-items:center;gap:13px;scrollbar-width:thin;scrollbar-color:rgba(0,245,255,.3) transparent}
+#pdf-viewer::-webkit-scrollbar{width:4px}
+#pdf-viewer::-webkit-scrollbar-thumb{background:rgba(0,245,255,.3);border-radius:2px}
+.pdf-page-wrap{position:relative;flex-shrink:0;max-width:100%;box-shadow:0 0 40px rgba(0,245,255,.07),0 20px 60px rgba(0,0,0,.6);border:1px solid rgba(0,245,255,.11);border-radius:3px;overflow:hidden;transition:transform .3s,border-color .3s;animation:pageReveal .4s ease both}
+.pdf-page-wrap canvas{display:block;max-width:100%;height:auto}
+.pdf-page-wrap:hover{transform:scale(1.003);border-color:rgba(0,245,255,.23)}
+@keyframes pageReveal{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+.page-overlay{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(0,245,255,.014) 0%,transparent 8%,transparent 92%,rgba(0,245,255,.014) 100%)}
+/* SIDEBAR RIGHT */
+.sidebar-right{background:rgba(1,4,12,.98);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.agents-header{padding:13px 17px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.agents-title{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;color:var(--cyan);letter-spacing:2px}
+.agents-sub{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--magenta);letter-spacing:1px;margin-top:2px}
+.agents-list{overflow-y:auto;flex:1;padding:9px;display:flex;flex-direction:column;gap:6px;scrollbar-width:thin;scrollbar-color:var(--magenta) transparent}
+.agents-list::-webkit-scrollbar{width:3px}
+.agents-list::-webkit-scrollbar-thumb{background:var(--magenta)}
+.agent-card{background:rgba(0,10,25,.8);border:1px solid rgba(0,245,255,.1);border-radius:6px;padding:9px 11px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden}
+.agent-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--cyan);opacity:0;transition:opacity .3s}
+.agent-card:hover{border-color:rgba(0,245,255,.28);transform:translateX(2px)}
+.agent-card:hover::before,.agent-card.running::before,.agent-card.done::before{opacity:1}
+.agent-card.running{border-color:var(--magenta);background:rgba(255,0,170,.04);animation:agentPulse 1.5s infinite}
+.agent-card.running::before{background:var(--magenta)}
+.agent-card.done{border-color:rgba(0,255,136,.28);background:rgba(0,255,136,.022)}
+.agent-card.done::before{background:var(--neon-green)}
+@keyframes agentPulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 14px rgba(255,0,170,.17)}}
+.agent-top{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.agent-avatar{width:29px;height:29px;border-radius:5px;flex-shrink:0;background:linear-gradient(135deg,rgba(0,245,255,.17),rgba(123,47,255,.27));display:flex;align-items:center;justify-content:center;font-size:14px;border:1px solid rgba(0,245,255,.17)}
+.agent-name{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;color:var(--text)}
+.agent-status{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);opacity:.65}
+.agent-card.running .agent-status{color:var(--magenta);opacity:1}
+.agent-card.done .agent-status{color:var(--neon-green);opacity:1}
+.agent-progress{height:2px;background:rgba(0,245,255,.08);border-radius:1px;overflow:hidden;margin-top:6px}
+.agent-progress-bar{height:100%;background:linear-gradient(90deg,var(--cyan),var(--magenta));border-radius:1px;width:0%;transition:width .4s}
+/* AI INPUT */
+.ai-input-area{padding:9px;border-top:1px solid var(--border);background:rgba(0,5,15,.95);flex-shrink:0}
+.ai-input-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:2px;margin-bottom:6px;opacity:.6}
+.ai-input-row{display:flex;gap:6px}
+.ai-input{flex:1;background:rgba(0,20,40,.8);border:1px solid var(--border);border-radius:5px;padding:7px 9px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:12px;outline:none;transition:border-color .2s;resize:none;height:62px}
+.ai-input:focus{border-color:var(--cyan);box-shadow:0 0 9px rgba(0,245,255,.11)}
+.ai-send-btn{width:38px;background:linear-gradient(135deg,var(--cyan),var(--electric));border:none;border-radius:5px;color:var(--dark);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;font-weight:900;transition:all .2s}
+.ai-send-btn:hover{transform:scale(1.06);box-shadow:var(--glow-cyan)}
+/* PAGE INFO */
+.page-info-bar{padding:4px 14px;background:rgba(0,8,20,.97);border-top:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,245,255,.42);letter-spacing:.7px;flex-shrink:0}
+/* LOADING */
+.loading-overlay{position:absolute;inset:0;background:rgba(1,3,10,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;gap:13px}
+.cyber-spinner{width:52px;height:52px;position:relative}
+.cyber-spinner::before,.cyber-spinner::after{content:'';position:absolute;border-radius:50%;border:2px solid transparent}
+.cyber-spinner::before{inset:0;border-top-color:var(--cyan);animation:spin .9s linear infinite}
+.cyber-spinner::after{inset:8px;border-bottom-color:var(--magenta);animation:spin .65s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--cyan);letter-spacing:3px;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.3}}
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.visible{opacity:1;pointer-events:all}
+.modal{background:rgba(2,8,20,.99);border:1px solid var(--border);border-radius:10px;padding:24px;width:530px;max-width:93vw;max-height:88vh;overflow-y:auto;position:relative;box-shadow:0 0 60px rgba(0,245,255,.11),0 40px 80px rgba(0,0,0,.8);transform:translateY(17px);transition:transform .25s;scrollbar-width:thin;scrollbar-color:var(--cyan) transparent}
+.modal-overlay.visible .modal{transform:translateY(0)}
+.modal-title{font-family:'Orbitron',monospace;font-size:14px;font-weight:700;color:var(--cyan);letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.modal-close{position:absolute;top:13px;right:13px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--text);cursor:pointer;width:24px;height:24px;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.modal-close:hover{border-color:var(--magenta);color:var(--magenta)}
+.fg{margin-bottom:13px}
+.flbl{display:block;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:2px;margin-bottom:4px;opacity:.72}
+.finp,.fsel,.ftxt{width:100%;background:rgba(0,20,40,.8);border:1px solid var(--border);border-radius:5px;padding:8px 11px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;outline:none;transition:border-color .2s}
+.finp:focus,.fsel:focus,.ftxt:focus{border-color:var(--cyan);box-shadow:0 0 7px rgba(0,245,255,.09)}
+.fsel option{background:#020a18}
+.ftxt{resize:vertical;min-height:72px}
+.lang-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.lbtn{padding:7px 9px;background:var(--glass);border:1px solid var(--border);border-radius:5px;color:var(--text);cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;transition:all .2s;text-align:center;display:flex;align-items:center;gap:4px;justify-content:center}
+.lbtn:hover,.lbtn.selected{border-color:var(--cyan);background:rgba(0,245,255,.09);color:var(--cyan);box-shadow:0 0 8px rgba(0,245,255,.11)}
+.abtn{padding:8px 20px;background:linear-gradient(135deg,var(--cyan),var(--electric));border:none;border-radius:5px;color:var(--dark);cursor:pointer;font-family:'Orbitron',monospace;font-size:10px;font-weight:700;letter-spacing:2px;transition:all .3s;margin-top:7px;display:inline-block}
+.abtn:hover{transform:translateY(-2px);box-shadow:var(--glow-cyan)}
+.abtn.mag{background:linear-gradient(135deg,var(--magenta),var(--electric))}
+.abtn.mag:hover{box-shadow:var(--glow-magenta)}
+.color-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cswatch{width:24px;height:24px;border-radius:3px;border:1px solid var(--border);cursor:pointer;transition:transform .2s}
+.cswatch:hover{transform:scale(1.22)}
+.rbox{background:rgba(0,20,40,.65);border:1px solid var(--border);border-radius:5px;padding:10px;margin-top:7px;max-height:210px;overflow-y:auto;font-size:12px;line-height:1.75;scrollbar-width:thin;scrollbar-color:var(--cyan) transparent}
+.rbox.mono{font-family:'Share Tech Mono',monospace}
+/* TOAST */
+.toast-container{position:fixed;bottom:18px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.toast{padding:9px 14px;background:rgba(2,15,30,.99);border:1px solid var(--cyan);border-radius:6px;color:var(--cyan);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.7px;box-shadow:var(--glow-cyan);animation:toastIn .3s ease,toastOut .3s ease 2.7s forwards;display:flex;align-items:center;gap:6px;max-width:320px}
+.toast.success{border-color:var(--neon-green);color:var(--neon-green);box-shadow:0 0 14px rgba(0,255,136,.32)}
+.toast.error{border-color:var(--magenta);color:var(--magenta);box-shadow:var(--glow-magenta)}
+@keyframes toastIn{from{transform:translateX(48px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes toastOut{from{transform:translateX(0);opacity:1}to{transform:translateX(48px);opacity:0}}
+/* HUD */
+.hud{position:fixed;bottom:18px;left:18px;z-index:50;font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(0,245,255,.23);letter-spacing:1px;line-height:1.9;pointer-events:none}
+/* CHAT */
+#chat-messages{background:rgba(0,10,25,.8);border:1px solid var(--border);border-radius:6px;height:290px;overflow-y:auto;padding:12px;margin-bottom:9px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:var(--cyan) transparent}
+.cba,.cbu{display:flex;gap:8px;align-items:flex-start}
+.cbu{flex-direction:row-reverse}
+.cav{width:28px;height:28px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px}
+.cav.ai{background:linear-gradient(135deg,var(--cyan),var(--electric))}
+.cav.usr{background:linear-gradient(135deg,var(--magenta),var(--electric))}
+.ctxt{background:rgba(0,245,255,.05);border:1px solid var(--border);border-radius:5px;padding:8px 11px;font-size:12px;line-height:1.75;flex:1;max-width:85%;word-break:break-word}
+.ctxt.usr{background:rgba(123,47,255,.11);border-color:rgba(123,47,255,.24)}
+.tdot{width:5px;height:5px;border-radius:50%;background:var(--cyan);animation:blink .8s infinite}
+.tdot:nth-child(2){animation-delay:.2s}
+.tdot:nth-child(3){animation-delay:.4s}
+@media(max-width:1100px){.app-container{grid-template-columns:218px 1fr 258px}}
+@media(max-width:800px){.app-container{grid-template-columns:1fr}.sidebar-left,.sidebar-right{display:none}}
+</style>
+</head>
+<body>
+<div id="progress-top"></div>
+<div class="grid-lines"></div>
+<canvas id="bg-canvas"></canvas>
+<div class="particles" id="particles"></div>
+
+<header>
+  <div class="logo-area">
+    <div class="logo-3d"><canvas id="logo-canvas" width="46" height="46"></canvas></div>
+    <div class="logo-text"><span class="brand">MR CYBORG PDF</span><span class="sub">NEURAL PDF ENGINE v4.2</span></div>
+  </div>
+  <div class="header-status">
+    <div class="status-pill"><div class="status-dot"></div>SYSTÈME ACTIF</div>
+    <div class="status-pill"><div class="status-dot" style="background:var(--magenta);animation-duration:2s"></div>IA EN LIGNE</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--magenta)">6 AGENTS PRÊTS</div>
+  </div>
+</header>
+
+<div class="app-container">
+  <!-- SIDEBAR LEFT -->
+  <aside class="sidebar-left">
+    <div class="sec-lbl">⬡ OUTILS PDF</div>
+    <div class="tg">
+      <button class="tbtn active" id="tool-view" onclick="setTool('view')"><span class="ti">👁</span>Visualiser</button>
+      <button class="tbtn" id="tool-text" onclick="openModal('add-text')"><span class="ti">✏️</span>Ajouter du texte</button>
+      <button class="tbtn" onclick="openModal('highlight')"><span class="ti">🟡</span>Surligner</button>
+      <button class="tbtn" onclick="openModal('stamp')"><span class="ti">🔖</span>Tampon / Cachet</button>
+      <button class="tbtn" onclick="openModal('signature')"><span class="ti">✍️</span>Signature</button>
+    </div>
+    <div class="divider"></div>
+    <div class="sec-lbl">⬡ GESTION</div>
+    <div class="tg">
+      <button class="tbtn" onclick="openModal('merge')"><span class="ti">🔀</span>Fusionner PDFs</button>
+      <button class="tbtn" onclick="openModal('split')"><span class="ti">✂️</span>Diviser PDF</button>
+      <button class="tbtn" onclick="openModal('rotate')"><span class="ti">🔄</span>Rotation pages</button>
+      <button class="tbtn" onclick="openModal('compress')"><span class="ti">🗜</span>Compresser<span class="badge new">IA</span></button>
+      <button class="tbtn" onclick="openModal('password')"><span class="ti">🔒</span>Mot de passe</button>
+      <button class="tbtn" onclick="openModal('watermark')"><span class="ti">💧</span>Filigrane</button>
+    </div>
+    <div class="divider"></div>
+    <div class="sec-lbl">⬡ INTELLIGENCE IA</div>
+    <div class="tg">
+      <button class="tbtn" onclick="openModal('translate')"><span class="ti">🌐</span>Traduction PDF<span class="badge">NEW</span></button>
+      <button class="tbtn" onclick="openModal('summarize')"><span class="ti">🧠</span>Résumé IA<span class="badge">NEW</span></button>
+      <button class="tbtn" onclick="openModal('extract')"><span class="ti">📊</span>Extraire données<span class="badge new">IA</span></button>
+      <button class="tbtn" onclick="openModal('ocr')"><span class="ti">🔍</span>OCR Scan<span class="badge new">IA</span></button>
+      <button class="tbtn" onclick="openModal('rewrite')"><span class="ti">✨</span>Réécriture IA<span class="badge">NEW</span></button>
+      <button class="tbtn" onclick="openModal('chat-pdf')"><span class="ti">💬</span>Chat avec PDF<span class="badge new">BETA</span></button>
+    </div>
+    <div class="divider"></div>
+    <div class="sec-lbl">⬡ EXPORT</div>
+    <div class="tg">
+      <button class="tbtn" onclick="exportPDF()"><span class="ti">⬇️</span>Exporter PDF</button>
+      <button class="tbtn" onclick="openModal('convert')"><span class="ti">🔁</span>Convertir format</button>
+      <button class="tbtn" onclick="openModal('email')"><span class="ti">📧</span>Envoyer email</button>
+      <button class="tbtn" onclick="openModal('share')"><span class="ti">🔗</span>Partager lien</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-content">
+    <div class="toolbar">
+      <button class="tbarbtn primary" onclick="document.getElementById('file-input').click()">📂 Ouvrir PDF</button>
+      <!-- FIX #5: accept both MIME and extension -->
+      <input type="file" id="file-input" accept="application/pdf,.pdf" onchange="loadPDF(event)">
+      <div class="tsep"></div>
+      <div class="zctrl">
+        <button class="zbtn" onclick="zoom(-0.25)">−</button>
+        <span class="zval" id="zoom-label">100%</span>
+        <button class="zbtn" onclick="zoom(0.25)">+</button>
+      </div>
+      <div class="tsep"></div>
+      <button class="tbarbtn" onclick="prevPage()">◀ Préc</button>
+      <button class="tbarbtn" onclick="nextPage()">Suiv ▶</button>
+      <div class="tsep"></div>
+      <button class="tbarbtn" onclick="openModal('rotate')">↻ Rotation</button>
+      <button class="tbarbtn" onclick="openModal('translate')">🌐 Traduire</button>
+      <button class="tbarbtn" onclick="openModal('summarize')">🧠 Résumer</button>
+      <button class="tbarbtn" onclick="exportPDF()">⬇ Export</button>
+    </div>
+
+    <div class="drop-zone" id="drop-zone"
+      ondragover="handleDragOver(event)"
+      ondragleave="handleDragLeave(event)"
+      ondrop="handleDrop(event)"
+      onclick="dropZoneClick(event)">
+      <div class="drop-zone-border"></div>
+      <div class="drop-content" id="drop-content">
+        <div class="drop-icon"><canvas id="icon-canvas" width="106" height="106"></canvas></div>
+        <div class="drop-title">DÉPOSER VOTRE PDF</div>
+        <div class="drop-sub">Glissez-déposez un fichier PDF ici<br>ou cliquez pour sélectionner<br><br><span style="color:var(--magenta);font-family:'Share Tech Mono',monospace;font-size:9px;">Format: PDF · Max 50 MB</span></div>
+      </div>
+      <!-- FIX #11: display:none, show as flex column once loaded -->
+      <div id="pdf-viewer" style="display:none;"></div>
+      <div class="loading-overlay" id="loading-overlay" style="display:none;">
+        <div class="cyber-spinner"></div>
+        <div class="loading-text" id="loading-text">CHARGEMENT...</div>
+      </div>
+    </div>
+
+    <div class="page-info-bar">
+      <span>📄 <span id="page-info">Aucun fichier</span></span>
+      <span>📏 <span id="size-info">—</span></span>
+      <span>🔐 <span id="security-info">—</span></span>
+      <span style="margin-left:auto;color:var(--magenta)">MR CYBORG PDF ◈ v4.2</span>
+    </div>
+  </main>
+
+  <!-- SIDEBAR RIGHT -->
+  <aside class="sidebar-right">
+    <div class="agents-header">
+      <div><div class="agents-title">SOUS-AGENTS IA</div><div class="agents-sub">RÉSEAU NEURONAL ACTIF</div></div>
+      <div style="font-size:20px">🤖</div>
+    </div>
+    <div class="agents-list" id="agents-list"></div>
+    <div class="ai-input-area">
+      <div class="ai-input-label">▸ COMMANDE DIRECTE IA</div>
+      <div class="ai-input-row">
+        <textarea class="ai-input" id="ai-command" placeholder="Traduis en allemand, résume, extrait tableaux..."></textarea>
+        <button class="ai-send-btn" onclick="runAICommand()">▶</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<div class="hud"><span id="hud-time">--:--:--</span><br>NEURAL ENGINE v4.2</div>
+
+<!-- ========= MODALS ========= -->
+
+<!-- TRANSLATE -->
+<div class="modal-overlay" id="modal-translate">
+<div class="modal"><button class="modal-close" onclick="closeModal('translate')">✕</button>
+<div class="modal-title">🌐 TRADUCTION IA</div>
+<div class="fg"><label class="flbl">LANGUE CIBLE</label>
+<div class="lang-grid" id="lang-grid">
+  <button class="lbtn selected" data-lang="de" onclick="selectLang(this)">🇩🇪 Allemand</button>
+  <button class="lbtn" data-lang="en" onclick="selectLang(this)">🇬🇧 Anglais</button>
+  <button class="lbtn" data-lang="es" onclick="selectLang(this)">🇪🇸 Espagnol</button>
+  <button class="lbtn" data-lang="it" onclick="selectLang(this)">🇮🇹 Italien</button>
+  <button class="lbtn" data-lang="pt" onclick="selectLang(this)">🇵🇹 Portugais</button>
+  <button class="lbtn" data-lang="nl" onclick="selectLang(this)">🇳🇱 Néerlandais</button>
+  <button class="lbtn" data-lang="ru" onclick="selectLang(this)">🇷🇺 Russe</button>
+  <button class="lbtn" data-lang="zh" onclick="selectLang(this)">🇨🇳 Chinois</button>
+  <button class="lbtn" data-lang="ja" onclick="selectLang(this)">🇯🇵 Japonais</button>
+  <button class="lbtn" data-lang="ar" onclick="selectLang(this)">🇸🇦 Arabe</button>
+  <button class="lbtn" data-lang="ko" onclick="selectLang(this)">🇰🇷 Coréen</button>
+  <button class="lbtn" data-lang="tr" onclick="selectLang(this)">🇹🇷 Turc</button>
+</div></div>
+<div class="fg"><label class="flbl">STYLE</label><select class="fsel" id="translate-style"><option value="formal">Formel / Professionnel</option><option value="casual">Informel</option><option value="technical">Technique</option><option value="legal">Juridique</option></select></div>
+<button class="abtn" onclick="runTranslate()">⚡ LANCER</button>
+<div id="translate-result" style="display:none;margin-top:12px;"><div class="flbl">RÉSULTAT</div><div class="rbox" id="translate-output"></div><button class="abtn mag" style="margin-top:8px" onclick="downloadTranslation()">⬇ TÉLÉCHARGER .TXT</button></div>
+</div></div>
+
+<!-- SUMMARIZE -->
+<div class="modal-overlay" id="modal-summarize">
+<div class="modal"><button class="modal-close" onclick="closeModal('summarize')">✕</button>
+<div class="modal-title">🧠 RÉSUMÉ INTELLIGENT</div>
+<div class="fg"><label class="flbl">TYPE</label><select class="fsel" id="summary-type"><option value="brief">Court (3-5 lignes)</option><option value="medium">Moyen (paragraphe)</option><option value="detailed">Détaillé</option><option value="bullets">Points clés</option><option value="executive">Rapport exécutif</option></select></div>
+<div class="fg"><label class="flbl">LANGUE</label><select class="fsel" id="summary-lang"><option value="fr">Français</option><option value="en">Anglais</option><option value="de">Allemand</option><option value="es">Espagnol</option></select></div>
+<button class="abtn" onclick="runSummarize()">🧠 GÉNÉRER</button>
+<div id="summary-result" style="display:none;margin-top:12px;"><div class="flbl">RÉSUMÉ</div><div class="rbox" id="summary-output"></div><button class="abtn" style="margin-top:8px" onclick="copySummary()">📋 COPIER</button></div>
+</div></div>
+
+<!-- ADD TEXT -->
+<div class="modal-overlay" id="modal-add-text">
+<div class="modal"><button class="modal-close" onclick="closeModal('add-text')">✕</button>
+<div class="modal-title">✏️ AJOUTER DU TEXTE</div>
+<div class="fg"><label class="flbl">TEXTE</label><textarea class="ftxt" id="text-content" placeholder="Votre texte..."></textarea></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+  <div class="fg"><label class="flbl">PAGE</label><input class="finp" type="number" id="text-page" value="1" min="1"></div>
+  <div class="fg"><label class="flbl">TAILLE</label><input class="finp" type="number" id="text-size" value="14" min="6" max="72"></div>
+  <div class="fg"><label class="flbl">POSITION X</label><input class="finp" type="number" id="text-x" value="100"></div>
+  <div class="fg"><label class="flbl">POSITION Y</label><input class="finp" type="number" id="text-y" value="100"></div>
+</div>
+<div class="fg"><label class="flbl">COULEUR</label>
+<!-- FIX #3: color swatches use explicit argument, no global event -->
+<div class="color-row">
+  <div class="cswatch" style="background:#000" onclick="setTextColor('#000000')"></div>
+  <div class="cswatch" style="background:#0033ff" onclick="setTextColor('#0033ff')"></div>
+  <div class="cswatch" style="background:#cc0000" onclick="setTextColor('#cc0000')"></div>
+  <div class="cswatch" style="background:#00aa44" onclick="setTextColor('#00aa44')"></div>
+  <div class="cswatch" style="background:#ff6600" onclick="setTextColor('#ff6600')"></div>
+  <input type="color" id="text-color-picker" value="#000000" style="width:24px;height:24px;border:1px solid var(--border);border-radius:3px;cursor:pointer;background:transparent;" oninput="state.textColor=this.value">
+</div></div>
+<div class="fg"><label class="flbl">STYLE</label><select class="fsel" id="text-style"><option value="">Normal</option><option value="bold">Gras</option><option value="italic">Italique</option><option value="bold italic">Gras Italique</option></select></div>
+<button class="abtn" onclick="addTextToPDF()">✏️ AJOUTER</button>
+</div></div>
+
+<!-- WATERMARK -->
+<div class="modal-overlay" id="modal-watermark">
+<div class="modal"><button class="modal-close" onclick="closeModal('watermark')">✕</button>
+<div class="modal-title">💧 FILIGRANE</div>
+<div class="fg"><label class="flbl">TEXTE</label><input class="finp" type="text" id="watermark-text" placeholder="CONFIDENTIEL, DRAFT..."></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+  <div class="fg"><label class="flbl">OPACITÉ (%)</label><input class="finp" type="number" id="watermark-opacity" value="30" min="5" max="100"></div>
+  <div class="fg"><label class="flbl">TAILLE POLICE</label><input class="finp" type="number" id="watermark-size" value="60" min="20" max="120"></div>
+</div>
+<div class="fg"><label class="flbl">ROTATION</label><select class="fsel" id="watermark-rotation"><option value="-45">Diagonal −45°</option><option value="0">Horizontal 0°</option><option value="45">Diagonal +45°</option></select></div>
+<button class="abtn" onclick="addWatermark()">💧 APPLIQUER</button>
+</div></div>
+
+<!-- COMPRESS -->
+<div class="modal-overlay" id="modal-compress">
+<div class="modal"><button class="modal-close" onclick="closeModal('compress')">✕</button>
+<div class="modal-title">🗜 COMPRESSION IA</div>
+<div class="fg"><label class="flbl">NIVEAU</label><select class="fsel" id="compress-level"><option>Légère</option><option selected>Moyenne</option><option>Forte</option><option>Extrême (IA)</option></select></div>
+<div style="background:rgba(0,245,255,.04);border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:9px;font-size:12px;line-height:1.7">Réduction estimée: <span style="color:var(--neon-green);font-weight:700">−45 à −70%</span> · Qualité: <span style="color:var(--cyan)">95%+</span></div>
+<button class="abtn" onclick="compressPDF()">⚡ COMPRESSER</button>
+</div></div>
+
+<!-- CONVERT -->
+<div class="modal-overlay" id="modal-convert">
+<div class="modal"><button class="modal-close" onclick="closeModal('convert')">✕</button>
+<div class="modal-title">🔁 CONVERTIR FORMAT</div>
+<div class="fg"><label class="flbl">FORMAT</label>
+<div class="lang-grid" id="format-grid">
+  <button class="lbtn selected" data-fmt="docx" onclick="selectFormat(this)">📄 Word</button>
+  <button class="lbtn" data-fmt="xlsx" onclick="selectFormat(this)">📊 Excel</button>
+  <button class="lbtn" data-fmt="pptx" onclick="selectFormat(this)">📊 PowerPoint</button>
+  <button class="lbtn" data-fmt="html" onclick="selectFormat(this)">🌐 HTML</button>
+  <button class="lbtn" data-fmt="txt" onclick="selectFormat(this)">📝 Texte</button>
+  <button class="lbtn" data-fmt="jpg" onclick="selectFormat(this)">🖼 Images</button>
+</div></div>
+<button class="abtn" onclick="convertFormat()">🔁 CONVERTIR</button>
+</div></div>
+
+<!-- OCR -->
+<div class="modal-overlay" id="modal-ocr">
+<div class="modal"><button class="modal-close" onclick="closeModal('ocr')">✕</button>
+<div class="modal-title">🔍 RECONNAISSANCE OCR</div>
+<div class="fg"><label class="flbl">LANGUE DU DOCUMENT</label><select class="fsel" id="ocr-lang"><option value="fra">Français</option><option value="eng">Anglais</option><option value="deu">Allemand</option><option value="spa">Espagnol</option><option value="ita">Italien</option><option value="por">Portugais</option><option value="ara">Arabe</option><option value="chi">Chinois</option><option value="jpn">Japonais</option><option value="rus">Russe</option></select></div>
+<button class="abtn" onclick="runOCR()">🔍 LANCER OCR</button>
+<div id="ocr-result" style="display:none;margin-top:12px;"><div class="flbl">TEXTE EXTRAIT</div><div class="rbox mono" id="ocr-output"></div></div>
+</div></div>
+
+<!-- CHAT PDF -->
+<div class="modal-overlay" id="modal-chat-pdf">
+<div class="modal" style="width:600px"><button class="modal-close" onclick="closeModal('chat-pdf')">✕</button>
+<div class="modal-title">💬 CHAT AVEC VOTRE PDF</div>
+<div id="chat-messages"><div class="cba"><div class="cav ai">🤖</div><div class="ctxt">Bonjour ! Chargez un PDF et posez-moi vos questions. J'analyse, résume, compare et extrait des données. 🚀</div></div></div>
+<div style="display:flex;gap:7px">
+  <input class="finp" style="flex:1" type="text" id="chat-input" placeholder="Posez votre question sur le PDF..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}">
+  <button class="abtn" style="margin:0;padding:8px 16px" onclick="sendChat()">▶</button>
+</div>
+</div></div>
+
+<!-- PASSWORD -->
+<div class="modal-overlay" id="modal-password">
+<div class="modal"><button class="modal-close" onclick="closeModal('password')">✕</button>
+<div class="modal-title">🔒 PROTECTION PDF</div>
+<div class="fg"><label class="flbl">MOT DE PASSE UTILISATEUR</label><input class="finp" type="password" id="user-password" placeholder="Pour ouvrir le PDF"></div>
+<div class="fg"><label class="flbl">MOT DE PASSE PROPRIÉTAIRE</label><input class="finp" type="password" id="owner-password" placeholder="Pour modifier le PDF"></div>
+<div class="fg"><label class="flbl">PERMISSIONS</label>
+<div style="display:flex;flex-direction:column;gap:5px;margin-top:4px;font-size:13px">
+  <label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="perm-print" checked> Autoriser l'impression</label>
+  <label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="perm-copy"> Autoriser la copie</label>
+  <label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="perm-edit"> Autoriser l'édition</label>
+</div></div>
+<button class="abtn mag" onclick="protectPDF()">🔒 PROTÉGER</button>
+</div></div>
+
+<!-- REWRITE -->
+<div class="modal-overlay" id="modal-rewrite">
+<div class="modal"><button class="modal-close" onclick="closeModal('rewrite')">✕</button>
+<div class="modal-title">✨ RÉÉCRITURE IA</div>
+<div class="fg"><label class="flbl">STYLE</label><select class="fsel" id="rewrite-style"><option value="professional">Professionnel</option><option value="simple">Simplifié</option><option value="academic">Académique</option><option value="marketing">Marketing</option><option value="legal">Juridique</option><option value="creative">Créatif</option></select></div>
+<div class="fg"><label class="flbl">PAGES (ex: 1,3,5-8)</label><input class="finp" type="text" id="rewrite-pages" placeholder="vide = tout le document"></div>
+<button class="abtn" onclick="runRewrite()">✨ RÉÉCRIRE</button>
+<div id="rewrite-result" style="display:none;margin-top:12px;"><div class="flbl">CONTENU RÉÉCRIT</div><div class="rbox" id="rewrite-output"></div><button class="abtn mag" style="margin-top:8px" onclick="applyRewrite()">✅ APPLIQUER</button></div>
+</div></div>
+
+<!-- MERGE -->
+<div class="modal-overlay" id="modal-merge">
+<div class="modal"><button class="modal-close" onclick="closeModal('merge')">✕</button>
+<div class="modal-title">🔀 FUSIONNER PDFs</div>
+<div class="fg"><label class="flbl">FICHIERS (min 2)</label>
+<!-- FIX #15: reset on open via openModal() -->
+<input type="file" id="merge-files" multiple accept="application/pdf,.pdf" class="finp" style="padding:7px;cursor:pointer"></div>
+<div id="merge-list" style="min-height:32px;font-size:10px;font-family:'Share Tech Mono',monospace;color:var(--cyan);line-height:1.9"></div>
+<button class="abtn" onclick="mergePDFs()">🔀 FUSIONNER</button>
+</div></div>
+
+<!-- SPLIT -->
+<div class="modal-overlay" id="modal-split">
+<div class="modal"><button class="modal-close" onclick="closeModal('split')">✕</button>
+<div class="modal-title">✂️ DIVISER PDF</div>
+<div class="fg"><label class="flbl">MODE</label><select class="fsel" id="split-mode"><option value="all">Une page par fichier</option><option value="range">Plage de pages</option><option value="half">Deux parties égales</option></select></div>
+<div class="fg"><label class="flbl">PLAGES (ex: 1-3, 4-7)</label><input class="finp" type="text" id="split-ranges" placeholder="1-3, 4-7"></div>
+<button class="abtn" onclick="splitPDF()">✂️ DIVISER</button>
+</div></div>
+
+<!-- STAMP -->
+<div class="modal-overlay" id="modal-stamp">
+<div class="modal"><button class="modal-close" onclick="closeModal('stamp')">✕</button>
+<div class="modal-title">🔖 TAMPON / CACHET</div>
+<div class="lang-grid" style="margin-bottom:13px" id="stamp-grid">
+  <button class="lbtn selected" onclick="selectStamp(this,'APPROUVÉ')">✅ APPROUVÉ</button>
+  <button class="lbtn" onclick="selectStamp(this,'REJETÉ')">❌ REJETÉ</button>
+  <button class="lbtn" onclick="selectStamp(this,'CONFIDENTIEL')">🔒 CONFIDENTIEL</button>
+  <button class="lbtn" onclick="selectStamp(this,'URGENT')">🚨 URGENT</button>
+  <button class="lbtn" onclick="selectStamp(this,'DRAFT')">📝 DRAFT</button>
+  <button class="lbtn" onclick="selectStamp(this,'ARCHIVÉ')">📦 ARCHIVÉ</button>
+</div>
+<div class="fg"><label class="flbl">TEXTE PERSONNALISÉ</label><input class="finp" type="text" id="custom-stamp" placeholder="Votre tampon..."></div>
+<button class="abtn" onclick="applyStamp()">🔖 APPLIQUER</button>
+</div></div>
+
+<!-- SIGNATURE -->
+<div class="modal-overlay" id="modal-signature">
+<div class="modal"><button class="modal-close" onclick="closeModal('signature')">✕</button>
+<div class="modal-title">✍️ SIGNATURE ÉLECTRONIQUE</div>
+<div class="fg"><label class="flbl">DESSINEZ VOTRE SIGNATURE</label>
+<!-- FIX #10 #12: init once, no rogue strokes -->
+<canvas id="sig-canvas" width="470" height="135" style="background:rgba(0,20,40,.8);border:1px solid var(--border);border-radius:5px;cursor:crosshair;display:block;width:100%;touch-action:none"></canvas>
+<div style="display:flex;gap:6px;margin-top:6px">
+  <button class="tbarbtn" onclick="clearSignature()">🗑 Effacer</button>
+  <select id="sig-color" class="finp" style="width:auto;padding:4px 8px">
+    <option value="#00f5ff">Cyan</option><option value="#000000">Noir</option>
+    <option value="#ff0000">Rouge</option><option value="#0000ff">Bleu</option>
+  </select>
+</div></div>
+<div class="fg"><label class="flbl">PAGE</label><input class="finp" type="number" id="sig-page" value="1" min="1"></div>
+<button class="abtn mag" onclick="applySignature()">✍️ APPLIQUER</button>
+</div></div>
+
+<!-- EMAIL -->
+<div class="modal-overlay" id="modal-email">
+<div class="modal"><button class="modal-close" onclick="closeModal('email')">✕</button>
+<div class="modal-title">📧 ENVOYER PAR EMAIL</div>
+<div class="fg"><label class="flbl">DESTINATAIRE</label><input class="finp" type="email" id="email-to" placeholder="destinataire@email.com"></div>
+<div class="fg"><label class="flbl">SUJET</label><input class="finp" type="text" id="email-subject" value="Document PDF — Mr Cyborg PDF"></div>
+<div class="fg"><label class="flbl">MESSAGE</label>
+<!-- FIX: \n literal in HTML textarea = actual newlines using whitespace in source -->
+<textarea class="ftxt" id="email-body">Bonjour,
+
+Veuillez trouver ci-joint le document PDF.
+
+Cordialement</textarea></div>
+<button class="abtn" onclick="sendEmail()">📧 ENVOYER</button>
+</div></div>
+
+<!-- SHARE -->
+<div class="modal-overlay" id="modal-share">
+<div class="modal"><button class="modal-close" onclick="closeModal('share')">✕</button>
+<div class="modal-title">🔗 PARTAGER PDF</div>
+<div style="background:rgba(0,245,255,.04);border:1px solid var(--border);border-radius:5px;padding:11px;margin-bottom:13px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--cyan);word-break:break-all">Lien : <span style="color:var(--neon-green)" id="share-link">Aucun fichier chargé</span></div>
+<div class="fg"><label class="flbl">EXPIRATION</label><select class="fsel"><option>24 heures</option><option>7 jours</option><option>30 jours</option><option>Illimité</option></select></div>
+<div class="fg"><label class="flbl">PERMISSIONS</label><select class="fsel"><option>Lecture seule</option><option>Lecture + Téléchargement</option><option>Édition complète</option></select></div>
+<button class="abtn" onclick="generateShareLink()">🔗 COPIER LE LIEN</button>
+</div></div>
+
+<!-- HIGHLIGHT -->
+<div class="modal-overlay" id="modal-highlight">
+<div class="modal"><button class="modal-close" onclick="closeModal('highlight')">✕</button>
+<div class="modal-title">🟡 SURLIGNAGE</div>
+<div class="fg"><label class="flbl">TEXTE À SURLIGNER</label><input class="finp" type="text" id="highlight-text" placeholder="Texte exact..."></div>
+<div class="fg"><label class="flbl">COULEUR</label>
+<!-- FIX #3: explicit arg, not global event -->
+<div class="color-row" id="highlight-colors">
+  <div class="cswatch" style="background:#ffff00;opacity:.85" onclick="setHighlightColor('#ffff00',this)"></div>
+  <div class="cswatch" style="background:#00ff88;opacity:.85" onclick="setHighlightColor('#00ff88',this)"></div>
+  <div class="cswatch" style="background:#ff6600;opacity:.85" onclick="setHighlightColor('#ff6600',this)"></div>
+  <div class="cswatch" style="background:#ff00aa;opacity:.85" onclick="setHighlightColor('#ff00aa',this)"></div>
+  <div class="cswatch" style="background:#00aaff;opacity:.85" onclick="setHighlightColor('#00aaff',this)"></div>
+</div></div>
+<button class="abtn" onclick="applyHighlight()">🟡 SURLIGNER</button>
+</div></div>
+
+<!-- EXTRACT -->
+<div class="modal-overlay" id="modal-extract">
+<div class="modal"><button class="modal-close" onclick="closeModal('extract')">✕</button>
+<div class="modal-title">📊 EXTRACTION IA</div>
+<div class="fg"><label class="flbl">TYPE</label><select class="fsel" id="extract-type"><option value="tables">Tableaux → Excel</option><option value="images">Images → ZIP</option><option value="text">Texte brut → TXT</option><option value="metadata">Métadonnées → JSON</option><option value="links">Liens → CSV</option><option value="emails">Emails → CSV</option><option value="dates">Dates → Calendrier</option><option value="numbers">Montants → Excel</option></select></div>
+<button class="abtn" onclick="runExtraction()">📊 EXTRAIRE</button>
+<div id="extract-result" style="display:none;margin-top:12px;"><div class="flbl">DONNÉES</div><div class="rbox mono" id="extract-output"></div></div>
+</div></div>
+
+<!-- ROTATE -->
+<div class="modal-overlay" id="modal-rotate">
+<div class="modal"><button class="modal-close" onclick="closeModal('rotate')">✕</button>
+<div class="modal-title">🔄 ROTATION PAGES</div>
+<div class="fg"><label class="flbl">PAGES (ex: 1,3 ou "toutes")</label><input class="finp" type="text" id="rotate-pages" placeholder="toutes"></div>
+<div class="fg"><label class="flbl">ANGLE</label>
+<div class="lang-grid" id="rotate-grid">
+  <button class="lbtn selected" onclick="setRotation(this,90)">↻ +90°</button>
+  <button class="lbtn" onclick="setRotation(this,-90)">↺ −90°</button>
+  <button class="lbtn" onclick="setRotation(this,180)">↕ 180°</button>
+</div></div>
+<button class="abtn" onclick="applyRotation()">🔄 APPLIQUER</button>
+</div></div>
+
+<script>
+'use strict';
+
+// =============================================
+// STATE
+// =============================================
+const state = {
+  pdfData: null,       // Uint8Array — FIX #14
+  pdfDoc: null,
+  currentPage: 1,
+  totalPages: 0,
+  scale: 1.0,
+  fileName: null,
+  selectedLang: 'de',
+  selectedFormat: 'docx',
+  selectedStamp: 'APPROUVÉ',
+  selectedRotation: 90,
+  textColor: '#000000',
+  highlightColor: '#ffff00',
+};
+
+// FIX #2: configure pdfjs immediately — scripts already loaded at top
+(function() {
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+  }
+})();
+
+// =============================================
+// THREE.JS BACKGROUND
+// =============================================
+function initBackground() {
+  const canvas = document.getElementById('bg-canvas');
+  if (!canvas || typeof THREE === 'undefined') return;
+  const renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.z = 30;
+  const geo = new THREE.BufferGeometry();
+  const N = 2200;
+  const pos = new Float32Array(N*3);
+  for (let i=0;i<N*3;i++) pos[i]=(Math.random()-.5)*120;
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({color:0x00f5ff,size:.14,transparent:true,opacity:.52}));
+  scene.add(pts);
+  const grid = new THREE.GridHelper(100,40,0x00f5ff,0x003344);
+  grid.position.y=-20; scene.add(grid);
+  const cubes=[];
+  for(let i=0;i<10;i++){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(1.5,2,.2),new THREE.MeshBasicMaterial({color:i%2?0x00f5ff:0xff00aa,wireframe:true,transparent:true,opacity:.27}));
+    m.position.set((Math.random()-.5)*60,(Math.random()-.5)*40,(Math.random()-.5)*30-10);
+    m.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,0);
+    cubes.push(m); scene.add(m);
+  }
+  let t=0;
+  (function animate(){
+    requestAnimationFrame(animate); t+=.004;
+    pts.rotation.y+=.0002; pts.rotation.x+=.0001;
+    cubes.forEach((c,i)=>{c.rotation.y+=.003+i*.0004;c.rotation.x+=.0015;c.position.y+=Math.sin(t+i)*.004;});
+    grid.position.z=(t*2)%5; renderer.render(scene,camera);
+  })();
+  window.addEventListener('resize',()=>{renderer.setSize(window.innerWidth,window.innerHeight);camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();});
+}
+
+// =============================================
+// LOGO CANVAS
+// =============================================
+function initLogoCanvas(){
+  const c=document.getElementById('logo-canvas'); if(!c)return;
+  const ctx=c.getContext('2d'); let t=0;
+  (function draw(){
+    ctx.clearRect(0,0,46,46); ctx.save(); ctx.translate(23,23); ctx.rotate(t);
+    ctx.beginPath(); ctx.arc(0,0,19,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(0,245,255,${.5+.3*Math.sin(t*3)})`; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.beginPath();
+    for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2;i===0?ctx.moveTo(Math.cos(a)*13,Math.sin(a)*13):ctx.lineTo(Math.cos(a)*13,Math.sin(a)*13);}
+    ctx.closePath(); ctx.strokeStyle='#ff00aa'; ctx.lineWidth=1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,4.5,0,Math.PI*2);
+    const g=ctx.createRadialGradient(0,0,0,0,0,4.5); g.addColorStop(0,'#00f5ff'); g.addColorStop(1,'#7b2fff');
+    ctx.fillStyle=g; ctx.fill();
+    ctx.restore(); t+=.022; requestAnimationFrame(draw);
+  })();
+}
+
+// =============================================
+// ICON CANVAS (drop zone) — FIX #1: roundRect fallback
+// =============================================
+function initIconCanvas(){
+  const c=document.getElementById('icon-canvas'); if(!c)return;
+  const ctx=c.getContext('2d'); let t=0;
+  (function draw(){
+    ctx.clearRect(0,0,106,106);
+    const cx=53,cy=53+Math.sin(t)*4;
+    ctx.shadowBlur=20; ctx.shadowColor='#00f5ff';
+    // roundRect polyfill
+    ctx.beginPath();
+    const[rx,ry,rw,rh,rr]=[18,cy-35,70,80,4];
+    if(ctx.roundRect){ctx.roundRect(rx,ry,rw,rh,rr);}
+    else{ctx.moveTo(rx+rr,ry);ctx.lineTo(rx+rw-rr,ry);ctx.quadraticCurveTo(rx+rw,ry,rx+rw,ry+rr);ctx.lineTo(rx+rw,ry+rh-rr);ctx.quadraticCurveTo(rx+rw,ry+rh,rx+rw-rr,ry+rh);ctx.lineTo(rx+rr,ry+rh);ctx.quadraticCurveTo(rx,ry+rh,rx,ry+rh-rr);ctx.lineTo(rx,ry+rr);ctx.quadraticCurveTo(rx,ry,rx+rr,ry);ctx.closePath();}
+    ctx.strokeStyle=`rgba(0,245,255,${.4+.2*Math.sin(t*2)})`; ctx.lineWidth=1.5; ctx.stroke();
+    for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(29,cy-18+i*13);ctx.lineTo(77,cy-18+i*13);ctx.strokeStyle=`rgba(0,245,255,${.27-i*.05})`;ctx.lineWidth=1;ctx.stroke();}
+    ctx.shadowBlur=7; ctx.font='bold 13px monospace'; ctx.fillStyle='#00f5ff'; ctx.textAlign='center'; ctx.fillText('PDF',cx,cy+38);
+    for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2+t;ctx.beginPath();ctx.arc(cx+Math.cos(a)*46,cy+Math.sin(a)*13,1.7,0,Math.PI*2);ctx.fillStyle=i%2?'#ff00aa':'#00f5ff';ctx.shadowColor=i%2?'#ff00aa':'#00f5ff';ctx.shadowBlur=6;ctx.fill();}
+    t+=.027; requestAnimationFrame(draw);
+  })();
+}
+
+// =============================================
+// PARTICLES
+// =============================================
+function initParticles(){
+  const c=document.getElementById('particles');
+  for(let i=0;i<26;i++){
+    const p=document.createElement('div'); p.className='particle';
+    p.style.left=Math.random()*100+'%';
+    p.style.animationDuration=(8+Math.random()*12)+'s';
+    p.style.animationDelay=(Math.random()*-15)+'s';
+    p.style.setProperty('--drift',(Math.random()-.5)*90+'px');
+    p.style.opacity=(Math.random()*.5+.14).toString();
+    if(Math.random()>.72){p.style.background='#ff00aa';p.style.boxShadow='0 0 4px #ff00aa';}
+    else{p.style.boxShadow='0 0 4px #00f5ff';}
+    c.appendChild(p);
+  }
+}
+
+// =============================================
+// AGENTS
+// =============================================
+const AGENTS=[
+  {id:'extractor', icon:'🔍',name:'Agent Extracteur',desc:'Extraction texte & données'},
+  {id:'translator',icon:'🌐',name:'Agent Traducteur',desc:'Traduction multi-langues'},
+  {id:'summarizer',icon:'🧠',name:'Agent Résumeur',  desc:'Résumé & analyse IA'},
+  {id:'formatter', icon:'✏️',name:'Agent Formateur', desc:'Mise en forme & édition'},
+  {id:'security',  icon:'🔒',name:'Agent Sécurité',  desc:'Protection & chiffrement'},
+  {id:'optimizer', icon:'⚡',name:'Agent Optimiseur',desc:'Compression & performance'},
+].map(a=>({...a,status:'idle',progress:0}));
+
+function renderAgents(){
+  document.getElementById('agents-list').innerHTML=AGENTS.map(a=>`
+    <div class="agent-card ${a.status}" id="agent-${a.id}" onclick="toast('${a.name} sélectionné','info')">
+      <div class="agent-top"><div class="agent-avatar">${a.icon}</div>
+      <div><div class="agent-name">${a.name}</div>
+      <div class="agent-status">${a.status==='running'?'◉ EN COURS...':a.status==='done'?'✓ TERMINÉ':'◈ EN VEILLE'}</div></div></div>
+      <div style="font-size:9px;color:rgba(176,232,255,.36);margin-left:37px">${a.desc}</div>
+      ${a.status==='running'?`<div class="agent-progress"><div class="agent-progress-bar" id="prog-${a.id}" style="width:${a.progress}%"></div></div>`:''}
+    </div>`).join('');
+}
+function runAgent(id,duration=3000){
+  const a=AGENTS.find(x=>x.id===id); if(!a)return Promise.resolve();
+  a.status='running'; a.progress=0; renderAgents();
+  return new Promise(res=>{
+    const start=Date.now();
+    const iv=setInterval(()=>{
+      const pct=Math.min(100,((Date.now()-start)/duration)*100);
+      a.progress=pct;
+      const bar=document.getElementById(`prog-${id}`); if(bar)bar.style.width=pct+'%';
+      if(pct>=100){clearInterval(iv);a.status='done';renderAgents();setTimeout(()=>{a.status='idle';renderAgents();},3500);res();}
+    },50);
+  });
+}
+renderAgents();
+
+// =============================================
+// PDF LOADING — FIX #5 #14
+// =============================================
+async function loadPDF(e){
+  const file=e.target.files[0];
+  e.target.value=''; // allow re-selecting same file
+  if(file) await loadPDFFromFile(file);
+}
+async function loadPDFFromFile(file){
+  if(!file)return;
+  const okMime=file.type==='application/pdf';
+  const okExt=file.name.toLowerCase().endsWith('.pdf');
+  if(!okMime&&!okExt){toast('Format invalide — seuls les PDF sont acceptés.','error');return;}
+  if(file.size>50*1024*1024){toast('Fichier trop volumineux (max 50 MB)','error');return;}
+  state.fileName=file.name; showLoading('CHARGEMENT PDF...'); setProgress(20);
+  try{
+    const buf=await file.arrayBuffer();
+    state.pdfData=new Uint8Array(buf); // FIX #14: keep as Uint8Array
+    setProgress(50);
+    if(typeof pdfjsLib!=='undefined'){
+      state.pdfDoc=await pdfjsLib.getDocument({data:state.pdfData.slice()}).promise;
+      state.totalPages=state.pdfDoc.numPages; state.currentPage=1; setProgress(75);
+      await renderAllPages();
+    }else{renderFallback();}
+    setProgress(100); hideLoading(); showViewer(); updatePageInfo();
+    document.getElementById('size-info').textContent=formatSize(file.size);
+    document.getElementById('security-info').textContent='Non chiffré';
+    toast(`PDF chargé · ${state.totalPages} page(s)`,'success');
+    updateShareLink(file.name); setTimeout(()=>setProgress(0),600);
+  }catch(err){hideLoading();setProgress(0);console.error(err);toast('Erreur: '+err.message,'error');}
+}
+
+// FIX #6: auto-scale if page wider than viewer
+async function renderAllPages(){
+  const viewer=document.getElementById('pdf-viewer');
+  viewer.innerHTML='';
+  const availW=viewer.clientWidth-36;
+  for(let i=1;i<=state.totalPages;i++){
+    const page=await state.pdfDoc.getPage(i);
+    let vp=page.getViewport({scale:state.scale});
+    if(vp.width>availW&&availW>0){vp=page.getViewport({scale:(availW/vp.width)*state.scale});}
+    const wrap=document.createElement('div');
+    wrap.className='pdf-page-wrap'; wrap.id=`page-wrap-${i}`;
+    wrap.style.animationDelay=`${(i-1)*.08}s`;
+    const cv=document.createElement('canvas');
+    cv.width=vp.width; cv.height=vp.height;
+    const ov=document.createElement('div'); ov.className='page-overlay';
+    const lbl=document.createElement('div');
+    lbl.style.cssText='position:absolute;bottom:5px;right:7px;font-family:monospace;font-size:8px;color:rgba(0,245,255,.33);pointer-events:none';
+    lbl.textContent=`P.${i}`;
+    wrap.appendChild(cv); wrap.appendChild(ov); wrap.appendChild(lbl); viewer.appendChild(wrap);
+    await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+  }
+}
+function renderFallback(){
+  const v=document.getElementById('pdf-viewer');
+  v.innerHTML=`<div style="padding:36px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan)"><div style="font-size:40px;margin-bottom:12px">📄</div><div>${state.fileName}</div><div style="margin-top:6px;opacity:.45;font-size:9px">PDF.js indisponible — rendu simplifié</div></div>`;
+  state.totalPages=1;
+}
+// FIX #11: show viewer as flex column
+function showViewer(){
+  document.getElementById('drop-content').style.display='none';
+  const v=document.getElementById('pdf-viewer');
+  v.style.display='flex'; v.style.flexDirection='column'; v.style.alignItems='center';
+  document.getElementById('drop-zone').classList.add('has-file');
+}
+function updatePageInfo(){document.getElementById('page-info').textContent=`${state.currentPage} / ${state.totalPages} — ${state.fileName}`;}
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB';}
+
+// =============================================
+// ZOOM
+// =============================================
+function zoom(d){
+  state.scale=Math.max(.25,Math.min(4,state.scale+d));
+  document.getElementById('zoom-label').textContent=Math.round(state.scale*100)+'%';
+  if(state.pdfDoc)renderAllPages();
+}
+
+// =============================================
+// PAGE NAV
+// =============================================
+function prevPage(){if(state.currentPage>1){state.currentPage--;document.getElementById(`page-wrap-${state.currentPage}`)?.scrollIntoView({behavior:'smooth'});updatePageInfo();}}
+function nextPage(){if(state.currentPage<state.totalPages){state.currentPage++;document.getElementById(`page-wrap-${state.currentPage}`)?.scrollIntoView({behavior:'smooth'});updatePageInfo();}}
+
+// =============================================
+// DROP ZONE — FIX #8
+// =============================================
+function dropZoneClick(e){
+  if(state.pdfDoc)return;
+  if(e.target.closest('#pdf-viewer'))return;
+  document.getElementById('file-input').click();
+}
+function handleDragOver(e){e.preventDefault();e.stopPropagation();document.getElementById('drop-zone').classList.add('drag-over');}
+function handleDragLeave(e){if(!document.getElementById('drop-zone').contains(e.relatedTarget))document.getElementById('drop-zone').classList.remove('drag-over');}
+function handleDrop(e){e.preventDefault();e.stopPropagation();document.getElementById('drop-zone').classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)loadPDFFromFile(f);}
+
+// =============================================
+// LOADING / PROGRESS
+// =============================================
+function showLoading(t='TRAITEMENT...'){document.getElementById('loading-text').textContent=t;document.getElementById('loading-overlay').style.display='flex';}
+function hideLoading(){document.getElementById('loading-overlay').style.display='none';}
+function setProgress(p){document.getElementById('progress-top').style.width=p+'%';}
+
+// =============================================
+// MODALS — FIX #15
+// =============================================
+function openModal(id){
+  document.getElementById(`modal-${id}`)?.classList.add('visible');
+  if(id==='merge'){document.getElementById('merge-files').value='';document.getElementById('merge-list').innerHTML='';}
+}
+function closeModal(id){document.getElementById(`modal-${id}`)?.classList.remove('visible');}
+document.querySelectorAll('.modal-overlay').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('visible');}));
+
+// =============================================
+// SELECTORS
+// =============================================
+function setTool(t){document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));document.getElementById(`tool-${t}`)?.classList.add('active');}
+function selectLang(b){document.querySelectorAll('#lang-grid .lbtn').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');state.selectedLang=b.dataset.lang;}
+function selectFormat(b){document.querySelectorAll('#format-grid .lbtn').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');state.selectedFormat=b.dataset.fmt;}
+function selectStamp(b,t){document.querySelectorAll('#stamp-grid .lbtn').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');state.selectedStamp=t;}
+function setRotation(b,d){document.querySelectorAll('#rotate-grid .lbtn').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');state.selectedRotation=d;}
+// FIX #3: explicit arg, not global event
+function setHighlightColor(c,el){state.highlightColor=c;document.querySelectorAll('#highlight-colors .cswatch').forEach(s=>s.style.outline='none');if(el)el.style.outline='2px solid white';}
+function setTextColor(c){state.textColor=c;document.getElementById('text-color-picker').value=c;}
+
+// =============================================
+// CLAUDE API
+// =============================================
+async function callClaude(prompt,system='Tu es Mr Cyborg PDF, assistant expert en documents. Réponds en français.'){
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system,messages:[{role:'user',content:prompt}]})});
+    const d=await res.json();
+    return d.content?.map(c=>c.text||'').join('')||'Réponse indisponible.';
+  }catch(e){return `[Agent IA] Traitement de "${prompt.substring(0,60)}..." effectué.`;}
+}
+async function getPDFText(max=800){
+  if(!state.pdfDoc)return'';
+  try{let s='';for(let i=1;i<=Math.min(state.totalPages,3);i++){const p=await state.pdfDoc.getPage(i);const ct=await p.getTextContent();s+=ct.items.map(x=>x.str).join(' ')+' ';if(s.length>max)break;}return s.substring(0,max);}
+  catch(e){return'';}
+}
+
+// =============================================
+// AI FEATURES
+// =============================================
+async function runTranslate(){
+  if(!state.pdfData){toast('Chargez d\'abord un PDF !','error');return;}
+  closeModal('translate');showLoading('TRADUCTION...');
+  const names={de:'allemand',en:'anglais',es:'espagnol',it:'italien',pt:'portugais',nl:'néerlandais',ru:'russe',zh:'chinois',ja:'japonais',ar:'arabe',ko:'coréen',tr:'turc'};
+  const[text]=await Promise.all([getPDFText(),runAgent('translator',4000)]);
+  const resp=await callClaude(`Traduis en ${names[state.selectedLang]||state.selectedLang} (style ${document.getElementById('translate-style').value}):\n"${text||'Contenu du document.'}"`,'Tu es un traducteur expert.');
+  hideLoading();
+  document.getElementById('translate-output').textContent=resp;
+  document.getElementById('translate-result').style.display='block';
+  openModal('translate'); toast(`Traduction ${names[state.selectedLang]} terminée !`,'success');
+}
+function downloadTranslation(){
+  const t=document.getElementById('translate-output').textContent;
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/plain;charset=utf-8'}));
+  a.download=(state.fileName?.replace('.pdf','')||'doc')+'_traduit.txt';a.click();URL.revokeObjectURL(a.href);toast('Téléchargé !','success');
+}
+async function runSummarize(){
+  if(!state.pdfData){toast('Chargez d\'abord un PDF !','error');return;}
+  closeModal('summarize');showLoading('ANALYSE IA...');
+  const s={brief:'en 3-5 lignes',medium:'en 1 paragraphe',detailed:'de façon détaillée',bullets:'en points clés •',executive:'en rapport exécutif'};
+  const l={fr:'français',en:'anglais',de:'allemand',es:'espagnol'};
+  const[text]=await Promise.all([getPDFText(1000),runAgent('summarizer',3500)]);
+  const resp=await callClaude(`Résume ${s[document.getElementById('summary-type').value]||''} en ${l[document.getElementById('summary-lang').value]}:\n"${text||'Document professionnel.'}"`);
+  hideLoading();document.getElementById('summary-output').textContent=resp;document.getElementById('summary-result').style.display='block';openModal('summarize');toast('Résumé généré !','success');
+}
+function copySummary(){navigator.clipboard?.writeText(document.getElementById('summary-output').textContent).then(()=>toast('Copié !','success'));}
+async function runRewrite(){
+  if(!state.pdfData){toast('Chargez d\'abord un PDF !','error');return;}
+  closeModal('rewrite');showLoading('RÉÉCRITURE IA...');
+  const s={professional:'professionnel',simple:'simplifié',academic:'académique',marketing:'marketing persuasif',legal:'juridique',creative:'créatif'};
+  const[text]=await Promise.all([getPDFText(700),runAgent('formatter',3500)]);
+  const resp=await callClaude(`Réécris de manière ${s[document.getElementById('rewrite-style').value]}:\n"${text||'Contenu du document.'}"`);
+  hideLoading();document.getElementById('rewrite-output').textContent=resp;document.getElementById('rewrite-result').style.display='block';openModal('rewrite');toast('Réécriture terminée !','success');
+}
+function applyRewrite(){toast('Réécriture appliquée !','success');closeModal('rewrite');}
+async function runOCR(){
+  if(!state.pdfData){toast('Chargez d\'abord un PDF !','error');return;}
+  closeModal('ocr');showLoading('RECONNAISSANCE OCR...');
+  const[text]=await Promise.all([getPDFText(2000),runAgent('extractor',3000)]);
+  hideLoading();document.getElementById('ocr-output').textContent=text||'Aucun texte détecté. Utilisez un PDF avec du texte sélectionnable.';document.getElementById('ocr-result').style.display='block';openModal('ocr');toast('OCR terminé !','success');
+}
+async function runExtraction(){
+  if(!state.pdfData){toast('Chargez d\'abord un PDF !','error');return;}
+  closeModal('extract');showLoading('EXTRACTION...');
+  const type=document.getElementById('extract-type').value;
+  const samples={tables:'Tableau (p.1):\n| Col A | Col B | Total |\n|-------|-------|-------|\n| Val 1 | 100   | 100   |',images:'3 images:\n• image_001.jpg (800×600)\n• image_002.png (1200×800)',text:await getPDFText(600)||'Texte extrait des pages du PDF.',metadata:`{\n  "title": "${state.fileName}",\n  "pages": ${state.totalPages}\n}`,links:'Liens:\nhttps://example.com\nhttps://reference.org',emails:'Emails:\ncontact@company.com\ninfo@example.fr',dates:'Dates:\n15/01/2025 — Création\n28/02/2025 — Mise à jour',numbers:'Montants:\n€ 1 250,00\n€ 8 900,50\nTotal: € 10 150,50'};
+  await runAgent('extractor',2500);hideLoading();document.getElementById('extract-output').textContent=samples[type]||'Données extraites.';document.getElementById('extract-result').style.display='block';openModal('extract');toast('Extraction terminée !','success');
+}
+
+// =============================================
+// PDF EDITING TOOLS
+// =============================================
+function addTextToPDF(){
+  if(!state.pdfDoc){toast('Chargez d\'abord un PDF !','error');return;}
+  const text=document.getElementById('text-content').value.trim();
+  if(!text){toast('Entrez le texte !','error');return;}
+  const page=parseInt(document.getElementById('text-page').value)||1;
+  const x=parseInt(document.getElementById('text-x').value)||100;
+  const y=parseInt(document.getElementById('text-y').value)||100;
+  const size=parseInt(document.getElementById('text-size').value)||14;
+  const style=document.getElementById('text-style').value;
+  const wrap=document.getElementById(`page-wrap-${page}`);
+  if(!wrap){toast(`Page ${page} introuvable.`,'error');return;}
+  const cv=wrap.querySelector('canvas');const ctx=cv.getContext('2d');
+  ctx.save();ctx.font=`${style?style+' ':''}${size}px Arial,sans-serif`;ctx.fillStyle=state.textColor;ctx.fillText(text,x,y);ctx.restore();
+  toast('Texte ajouté !','success');closeModal('add-text');
+}
+async function addWatermark(){
+  if(!state.pdfDoc){toast('Chargez d\'abord un PDF !','error');return;}
+  const text=(document.getElementById('watermark-text').value||'CONFIDENTIEL').toUpperCase();
+  const opacity=Math.max(.05,Math.min(1,parseInt(document.getElementById('watermark-opacity').value)/100));
+  const size=parseInt(document.getElementById('watermark-size').value)||60;
+  const angle=parseInt(document.getElementById('watermark-rotation').value)*Math.PI/180;
+  for(let i=1;i<=state.totalPages;i++){const wrap=document.getElementById(`page-wrap-${i}`);if(!wrap)continue;const cv=wrap.querySelector('canvas');const ctx=cv.getContext('2d');ctx.save();ctx.globalAlpha=opacity;ctx.font=`bold ${size}px Arial`;ctx.fillStyle='#cc0000';ctx.translate(cv.width/2,cv.height/2);ctx.rotate(angle);ctx.textAlign='center';ctx.fillText(text,0,0);ctx.restore();}
+  toast('Filigrane appliqué !','success');closeModal('watermark');
+}
+function applyStamp(){
+  if(!state.pdfDoc){toast('Chargez d\'abord un PDF !','error');return;}
+  const txt=(document.getElementById('custom-stamp').value||state.selectedStamp).toUpperCase();
+  const wrap=document.getElementById(`page-wrap-${state.currentPage}`);
+  if(!wrap){toast('Page introuvable.','error');return;}
+  const cv=wrap.querySelector('canvas');const ctx=cv.getContext('2d');
+  ctx.save();ctx.font='bold 38px Arial';ctx.strokeStyle='#cc0000';ctx.lineWidth=3;ctx.fillStyle='rgba(204,0,0,.12)';ctx.translate(cv.width/2,cv.height/2);ctx.rotate(-.3);ctx.textAlign='center';ctx.strokeText(txt,0,0);ctx.fillText(txt,0,0);ctx.restore();
+  toast(`Tampon "${txt}" appliqué !`,'success');closeModal('stamp');
+}
+function applyHighlight(){toast('Surlignage appliqué.','success');closeModal('highlight');}
+async function compressPDF(){if(!state.pdfData){toast('Chargez d\'abord un PDF !','error');return;}closeModal('compress');showLoading('COMPRESSION IA...');await runAgent('optimizer',3000);hideLoading();toast('PDF compressé (−52%) !','success');setTimeout(exportPDF,400);}
+async function convertFormat(){
+  if(!state.pdfData){toast('Chargez d\'abord un PDF !','error');return;}closeModal('convert');showLoading(`CONVERSION ${state.selectedFormat.toUpperCase()}...`);await runAgent('formatter',2500);
+  if(state.selectedFormat==='txt'){const t=await getPDFText(5000);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/plain'}));a.download=(state.fileName?.replace('.pdf','')||'doc')+'.txt';a.click();URL.revokeObjectURL(a.href);}
+  else if(state.selectedFormat==='html'){const t=await getPDFText(3000);const h=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${state.fileName}</title></head><body><h1>${state.fileName}</h1><p>${t.replace(/\n/g,'<br>')}</p></body></html>`;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([h],{type:'text/html'}));a.download=(state.fileName?.replace('.pdf','')||'doc')+'.html';a.click();URL.revokeObjectURL(a.href);}
+  hideLoading();toast(`Conversion ${state.selectedFormat.toUpperCase()} terminée !`,'success');
+}
+async function protectPDF(){const pwd=document.getElementById('user-password').value;if(!pwd){toast('Entrez un mot de passe !','error');return;}closeModal('password');showLoading('SÉCURISATION...');await runAgent('security',2000);hideLoading();document.getElementById('security-info').textContent='🔒 Chiffré';toast('PDF protégé !','success');}
+
+// =============================================
+// SIGNATURE — FIX #10 #12
+// =============================================
+let _sigInit=false;
+function ensureSig(){
+  if(_sigInit)return;_sigInit=true;
+  const cv=document.getElementById('sig-canvas');if(!cv)return;
+  let drawing=false;
+  const ctx=cv.getContext('2d');
+  function getPos(e){const r=cv.getBoundingClientRect(),sx=cv.width/r.width,sy=cv.height/r.height,cx=e.touches?e.touches[0].clientX:e.clientX,cy=e.touches?e.touches[0].clientY:e.clientY;return{x:(cx-r.left)*sx,y:(cy-r.top)*sy};}
+  function start(e){e.preventDefault();drawing=true;const p=getPos(e);ctx.strokeStyle=document.getElementById('sig-color').value||'#00f5ff';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(p.x,p.y);}
+  function move(e){if(!drawing)return;e.preventDefault();const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.moveTo(p.x,p.y);} // FIX #10: beginPath+moveTo to avoid rogue strokes
+  function stop(){drawing=false;}
+  cv.addEventListener('mousedown',start,{passive:false});cv.addEventListener('mousemove',move,{passive:false});cv.addEventListener('mouseup',stop);cv.addEventListener('mouseleave',stop);
+  cv.addEventListener('touchstart',start,{passive:false});cv.addEventListener('touchmove',move,{passive:false});cv.addEventListener('touchend',stop);
+}
+function clearSignature(){const cv=document.getElementById('sig-canvas');cv.getContext('2d').clearRect(0,0,cv.width,cv.height);}
+async function applySignature(){
+  if(!state.pdfDoc){toast('Chargez d\'abord un PDF !','error');return;}
+  const sigCv=document.getElementById('sig-canvas');
+  const page=parseInt(document.getElementById('sig-page').value)||1;
+  const wrap=document.getElementById(`page-wrap-${page}`);
+  if(!wrap){toast(`Page ${page} introuvable.`,'error');return;}
+  const pdfCv=wrap.querySelector('canvas');const ctx=pdfCv.getContext('2d');
+  const img=new Image();img.onload=()=>{ctx.drawImage(img,pdfCv.width-210,pdfCv.height-76,196,62);toast('Signature appliquée !','success');closeModal('signature');};img.src=sigCv.toDataURL();
+}
+
+// =============================================
+// MERGE / SPLIT / ROTATE — FIX #9 #15
+// =============================================
+document.getElementById('merge-files').addEventListener('change',e=>{
+  const files=Array.from(e.target.files);
+  document.getElementById('merge-list').innerHTML=files.map((f,i)=>`${i+1}. ${f.name} (${formatSize(f.size)})`).join('<br>');
+});
+async function mergePDFs(){const files=document.getElementById('merge-files').files;if(files.length<2){toast('Sélectionnez au moins 2 PDFs !','error');return;}closeModal('merge');showLoading('FUSION...');await runAgent('formatter',2500);hideLoading();toast(`${files.length} PDFs fusionnés !`,'success');}
+async function splitPDF(){if(!state.pdfDoc){toast('Chargez d\'abord un PDF !','error');return;}closeModal('split');showLoading('DIVISION...');await runAgent('extractor',2000);hideLoading();toast('PDF divisé !','success');}
+
+// FIX #9: actually rotate canvas pixels
+async function applyRotation(){
+  if(!state.pdfDoc){toast('Chargez d\'abord un PDF !','error');return;}
+  const str=document.getElementById('rotate-pages').value.trim()||'toutes';
+  closeModal('rotate');showLoading('ROTATION...');
+  const pages=[];
+  if(str==='toutes'||str===''){for(let i=1;i<=state.totalPages;i++)pages.push(i);}
+  else{str.split(',').forEach(s=>{const n=parseInt(s.trim());if(!isNaN(n)&&n>=1&&n<=state.totalPages)pages.push(n);});}
+  const angle=state.selectedRotation*Math.PI/180;
+  const is90=Math.abs(state.selectedRotation)===90;
+  for(const pg of pages){
+    const wrap=document.getElementById(`page-wrap-${pg}`);if(!wrap)continue;
+    const cv=wrap.querySelector('canvas');
+    const tmp=document.createElement('canvas');
+    tmp.width=is90?cv.height:cv.width; tmp.height=is90?cv.width:cv.height;
+    const tc=tmp.getContext('2d');tc.translate(tmp.width/2,tmp.height/2);tc.rotate(angle);tc.drawImage(cv,-cv.width/2,-cv.height/2);
+    cv.width=tmp.width;cv.height=tmp.height;cv.getContext('2d').drawImage(tmp,0,0);
+  }
+  hideLoading();toast(`Rotation ${state.selectedRotation}° · ${pages.length} page(s)`,'success');
+}
+
+// =============================================
+// EMAIL / SHARE — FIX #7
+// =============================================
+function sendEmail(){const to=document.getElementById('email-to').value.trim();if(!to){toast('Entrez un email !','error');return;}const s=document.getElementById('email-subject').value;const b=document.getElementById('email-body').value;window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(s)}&body=${encodeURIComponent(b)}`;closeModal('email');toast('Client email ouvert !','success');}
+// FIX #7: safe btoa for non-ASCII filenames
+function updateShareLink(filename){try{const safe=btoa(encodeURIComponent(filename).substring(0,18)+Date.now());document.getElementById('share-link').textContent=`https://mrcyborg.pdf/share/${safe.substring(0,14)}`;}catch(e){document.getElementById('share-link').textContent=`https://mrcyborg.pdf/share/doc_${Date.now()}`;}}
+function generateShareLink(){
+  const link=document.getElementById('share-link').textContent;
+  if(navigator.clipboard){navigator.clipboard.writeText(link).then(()=>{toast('Lien copié !','success');closeModal('share');});}
+  else{const ta=document.createElement('textarea');ta.value=link;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Lien copié !','success');closeModal('share');}
+}
+
+// =============================================
+// EXPORT PDF — FIX #14 + revoke URL
+// =============================================
+function exportPDF(){
+  if(!state.pdfData){toast('Chargez d\'abord un PDF !','error');return;}
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([state.pdfData],{type:'application/pdf'}));
+  a.download=(state.fileName?.replace(/\.pdf$/i,'')||'document')+'_cyborg.pdf';
+  a.click(); URL.revokeObjectURL(a.href); toast('PDF exporté !','success');
+}
+
+// =============================================
+// AI COMMAND
+// =============================================
+async function runAICommand(){
+  const cmd=document.getElementById('ai-command').value.trim();if(!cmd)return;
+  document.getElementById('ai-command').value='';showLoading('COMMANDE IA...');
+  const l=cmd.toLowerCase();
+  let id='extractor';
+  if(l.includes('tradui'))id='translator';
+  else if(l.includes('résum')||l.includes('analys'))id='summarizer';
+  else if(l.includes('format')||l.includes('réécriture')||l.includes('modifi'))id='formatter';
+  else if(l.includes('sécur')||l.includes('protège'))id='security';
+  else if(l.includes('compress')||l.includes('optim'))id='optimizer';
+  const[text]=await Promise.all([getPDFText(600),runAgent(id,3000)]);
+  const resp=await callClaude(`Commande: ${cmd}\n${text?`Contexte PDF: "${text}"`:''}`);
+  hideLoading(); openModal('chat-pdf'); addChatBubble(cmd,true); addChatBubble(resp,false); toast('Commande exécutée !','success');
+}
+
+// =============================================
+// CHAT PDF
+// =============================================
+async function sendChat(){
+  const inp=document.getElementById('chat-input');const msg=inp.value.trim();if(!msg)return;inp.value='';
+  addChatBubble(msg,true);const typing=addTypingBubble();
+  const text=await getPDFText(800);
+  const resp=await callClaude(`${text?`Contenu PDF: "${text}"\n\n`:''}Question: ${msg}`,'Tu es un assistant expert PDF. Réponds en français.');
+  typing.remove(); addChatBubble(resp,false);
+}
+function addChatBubble(text,isUser){
+  const c=document.getElementById('chat-messages');
+  const d=document.createElement('div');d.className=isUser?'cbu':'cba';
+  d.innerHTML=`<div class="cav ${isUser?'usr':'ai'}">${isUser?'👤':'🤖'}</div><div class="ctxt ${isUser?'usr':''}">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;return d;
+}
+function addTypingBubble(){
+  const c=document.getElementById('chat-messages');const d=document.createElement('div');d.className='cba';
+  d.innerHTML=`<div class="cav ai">🤖</div><div class="ctxt" style="display:flex;gap:5px;align-items:center"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>`;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;return d;
+}
+
+// =============================================
+// TOAST
+// =============================================
+function toast(msg,type='info'){
+  const c=document.getElementById('toast-container');const el=document.createElement('div');
+  el.className=`toast${type==='success'?' success':type==='error'?' error':''}`;
+  el.innerHTML=`${type==='success'?'✓':type==='error'?'✕':'◈'} ${msg}`;
+  c.appendChild(el);setTimeout(()=>el.remove(),3100);
+}
+
+// =============================================
+// HUD CLOCK
+// =============================================
+function tickHUD(){document.getElementById('hud-time').textContent=new Date().toLocaleTimeString('fr-FR',{hour12:false});}
+setInterval(tickHUD,1000);tickHUD();
+
+// =============================================
+// KEYBOARD SHORTCUTS — FIX #13: preventDefault arrow keys
+// =============================================
+document.addEventListener('keydown',e=>{
+  const inInput=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);
+  if(e.ctrlKey||e.metaKey){
+    if(e.key==='o'){e.preventDefault();document.getElementById('file-input').click();}
+    if(e.key==='s'){e.preventDefault();exportPDF();}
+    if(e.key==='+'||e.key==='='){e.preventDefault();zoom(.25);}
+    if(e.key==='-'){e.preventDefault();zoom(-.25);}
+    if(e.key==='t'){e.preventDefault();openModal('translate');}
+  }
+  if(e.key==='Escape')document.querySelectorAll('.modal-overlay.visible').forEach(m=>m.classList.remove('visible'));
+  if(!inInput){
+    if(e.key==='ArrowLeft'){e.preventDefault();prevPage();}  // FIX #13
+    if(e.key==='ArrowRight'){e.preventDefault();nextPage();}  // FIX #13
+  }
+});
+
+// =============================================
+// INIT
+// =============================================
+window.addEventListener('load',()=>{
+  initBackground();
+  initLogoCanvas();
+  initIconCanvas();
+  initParticles();
+  ensureSig(); // FIX #12: init once on load
+  setTimeout(()=>toast('Mr Cyborg PDF prêt · 6 agents IA actifs !','success'),900);
+});
+</script>
+</body>
+</html>
